@@ -113,17 +113,83 @@ WantedBy=multi-user.target
 
 ---
 
+### monthly-report.py
+
+Generates a monthly server health report and sends it to Discord.
+
+**Report Includes**
+- Server uptime and reboot count
+- Disk usage (excluding snaps)
+- Public IP and SSH port
+- System load average
+- ZFS pool status
+- SMART disk health
+- Logged in users
+- RAM usage
+- Service status checks
+- Open connections
+- Network throughput
+
+**Required Configuration**
+
+| Variable | Description |
+|----------|-------------|
+| `DISCORD_WEBHOOK_URL` | Discord webhook URL for reports |
+| `SERVER_NAME` | Display name for the server |
+| `SSH_PORT` | SSH port number |
+
+**Requirements**
+```bash
+sudo apt install smartmontools
+```
+
+**Systemd Files**
+
+`/etc/systemd/system/monthly-report.service`
+```ini
+[Unit]
+Description=Monthly Server Report
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/bin/monthly-report.py
+
+[Install]
+WantedBy=timers.target
+```
+
+`/etc/systemd/system/monthly-report.timer`
+```ini
+[Unit]
+Description=Monthly Server Report Timer
+
+[Timer]
+OnCalendar=*-*-01 09:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+---
+
 ## Installation
 
 ```bash
 sudo cp watchdog.py /usr/local/bin/watchdog.py
 sudo cp plex-updates.sh /usr/local/bin/plex-updates.sh
+sudo cp monthly-report.py /usr/local/bin/monthly-report.py
 sudo chmod +x /usr/local/bin/watchdog.py
 sudo chmod +x /usr/local/bin/plex-updates.sh
+sudo chmod +x /usr/local/bin/monthly-report.py
 
 sudo cp watchdog.service /etc/systemd/system/
 sudo cp watchdog.timer /etc/systemd/system/
 sudo cp plex-updates.service /etc/systemd/system/
+sudo cp monthly-report.service /etc/systemd/system/
+sudo cp monthly-report.timer /etc/systemd/system/
 
 sudo systemctl daemon-reload
 
@@ -132,6 +198,9 @@ sudo systemctl start watchdog.timer
 
 sudo systemctl enable plex-updates.service
 sudo systemctl start plex-updates.service
+
+sudo systemctl enable monthly-report.timer
+sudo systemctl start monthly-report.timer
 ```
 
 ## Logs
@@ -139,6 +208,7 @@ sudo systemctl start plex-updates.service
 ```bash
 journalctl -u watchdog.service -f
 journalctl -u plex-updates.service -f
+journalctl -u monthly-report.service -f
 ```
 
 ## License
